@@ -1,0 +1,242 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mule xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:db="http://www.mulesoft.org/schema/mule/db" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:apikit="http://www.mulesoft.org/schema/mule/mule-apikit" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd http://www.mulesoft.org/schema/mule/mule-apikit http://www.mulesoft.org/schema/mule/mule-apikit/current/mule-apikit.xsd http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd 
+http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd">
+    <http:listener-config name="employees-api-httpListenerConfig">
+        <http:listener-connection host="0.0.0.0" port="8081" />
+    </http:listener-config>
+    
+    <apikit:config name="employees-api-config" api="api/api.raml" outboundHeadersMapName="outboundHeaders" httpStatusVarName="httpStatus" />
+    
+    <flow name="employees-api-main">
+        <http:listener config-ref="employees-api-httpListenerConfig" path="/api/*">
+            <http:response statusCode="#[vars.httpStatus default 200]">
+                <http:headers>#[vars.outboundHeaders default {}]</http:headers>
+            </http:response>
+            <http:error-response statusCode="#[vars.httpStatus default 500]">
+                <http:body>#[payload]</http:body>
+                <http:headers>#[vars.outboundHeaders default {}]</http:headers>
+            </http:error-response>
+        </http:listener>
+        <apikit:router config-ref="employees-api-config" />
+        <error-handler>
+            <on-error-propagate type="APIKIT:BAD_REQUEST">
+                <ee:transform>
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{message: "Bad request"}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus">400</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+            <on-error-propagate type="APIKIT:NOT_FOUND">
+                <ee:transform>
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{message: "Resource not found"}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus">404</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+            <on-error-propagate type="APIKIT:METHOD_NOT_ALLOWED">
+                <ee:transform>
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{message: "Method not allowed"}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus">405</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+            <on-error-propagate type="APIKIT:NOT_ACCEPTABLE">
+                <ee:transform>
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{message: "Not acceptable"}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus">406</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+            <on-error-propagate type="APIKIT:UNSUPPORTED_MEDIA_TYPE">
+                <ee:transform>
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{message: "Unsupported media type"}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus">415</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+            <on-error-propagate type="APIKIT:NOT_IMPLEMENTED">
+                <ee:transform>
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{message: "Not Implemented"}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus">501</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+        </error-handler>
+    </flow>
+    <flow name="employees-api-console">
+        <http:listener config-ref="employees-api-httpListenerConfig" path="/console/*">
+            <http:response statusCode="#[vars.httpStatus default 200]">
+                <http:headers>#[vars.outboundHeaders default {}]</http:headers>
+            </http:response>
+            <http:error-response statusCode="#[vars.httpStatus default 500]">
+                <http:body>#[payload]</http:body>
+                <http:headers>#[vars.outboundHeaders default {}]</http:headers>
+            </http:error-response>
+        </http:listener>
+        <apikit:console config-ref="employees-api-config" />
+        <error-handler>
+            <on-error-propagate type="APIKIT:NOT_FOUND">
+                <ee:transform>
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{message: "Resource not found"}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus">404</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+        </error-handler>
+    </flow>
+    <flow name="get:\employees:employees-api-config">
+		<logger level="INFO" doc:name="Logger" doc:id="5114cbc9-853e-44de-8a0c-8f0f19942454" message='#["API GET /employees request process started"]'/>
+		<ee:transform doc:name="limit, offset" doc:id="d8aecf20-8ce4-4edc-bd7e-56d5d9ca504c" >
+			<ee:message >
+			</ee:message>
+			<ee:variables >
+				<ee:set-variable variableName="offset" ><![CDATA[%dw 2.0
+output application/java
+---
+if (isEmpty(attributes.queryParams.offset)) 0 
+else attributes.queryParams.offset as Number]]></ee:set-variable>
+				<ee:set-variable variableName="limit" ><![CDATA[%dw 2.0
+output application/java
+---
+if (isEmpty(attributes.queryParams.limit)) 1000 
+else attributes.queryParams.limit as Number]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<db:select doc:name="DB Select count" doc:id="14892a95-2641-4e63-b69b-30dab7d71c2b" config-ref="Database_Config" target="totalRecords">
+			<db:sql><![CDATA[SELECT COUNT(*) from employees]]></db:sql>
+		</db:select>
+		<db:select doc:name="DB Select data" doc:id="a53b1c80-47e9-4405-977d-eb7575dd5b0e" config-ref="Database_Config" >
+			<db:sql ><![CDATA[SELECT * from employees LIMIT (:limit) OFFSET (:offset)]]></db:sql>
+			<db:input-parameters ><![CDATA[#[output application/java 
+---
+{
+	offset: vars.offset,
+	limit: vars.limit
+}]]]></db:input-parameters>
+		</db:select>
+		<ee:transform doc:name="currentPage, totalPages" doc:id="a906dc19-2644-43a2-a196-a02f2aa054ea" >
+			<ee:message >
+			</ee:message>
+			<ee:variables >
+				<ee:set-variable variableName="currentPage" ><![CDATA[%dw 2.4
+    
+// Arrow Function to calculate currentPage
+var currentPage = (offSet,limit) ->
+    floor((offSet/limit) + 1)
+    
+output application/json
+---
+currentPage(vars.offset,vars.limit)]]></ee:set-variable>
+				<ee:set-variable variableName="totalPages" ><![CDATA[%dw 2.4
+
+//come from first db count(*) query
+var totalRecords = vars.totalRecords[0].'COUNT(*)' as Number
+
+// Arrow Function to calculate totalPages
+var totalPages =  (limit) ->
+    ceil(totalRecords / limit)
+    
+output application/json
+---
+totalPages(vars.limit)]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<ee:transform doc:name="links" doc:id="af9c70dd-4ea8-4341-9e0f-7c69b1456e2a" >
+			<ee:message >
+			</ee:message>
+			<ee:variables >
+				<ee:set-variable variableName="links" ><![CDATA[%dw 2.4
+
+//come from first db count(*) query
+var totalRecords = vars.totalRecords[0].'COUNT(*)' as Number
+
+var offset = vars.offset 
+
+var limit = vars.limit
+
+//last offset 
+var lastOffset = totalRecords - (totalRecords mod limit)
+
+fun pageParameters(inOffset, inLimit) = 
+	if(!isEmpty(inOffset) and (inOffset == 0 or inOffset > 0) and (inOffset <= lastOffset) )
+		("offset=" ++ (inOffset as String) ++ "&limit=" ++ (inLimit as String))
+	//handle next page url if next offset is > lastOffset 
+	else if(!isEmpty(inOffset) and (inOffset == 0 or inOffset > 0) and (inOffset > lastOffset) )
+		("offset=" ++ (lastOffset as String) ++ "&limit=" ++ (inLimit as String))
+	//handle previous page url for the first request incase the offset goes negative
+	else if(!isEmpty(inOffset) and (inOffset < 0))
+		("offset=" ++ (0 as String) ++ "&limit=" ++ (inLimit as String))
+    else ""
+
+output application/java
+---
+{
+	self: "http://localhost:8081/employees?" ++ pageParameters(offset, limit), 
+	first: "http://localhost:8081/employees?" ++ pageParameters(0, limit),
+	prev: "http://localhost:8081/employees?" ++ pageParameters((offset - limit), limit), 
+	next: "http://localhost:8081/employees?" ++ pageParameters((offset + limit), limit), 
+	last: "http://localhost:8081/employees?" ++ pageParameters(lastOffset, limit)
+}]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<ee:transform doc:name="Transform Message" doc:id="cf9ca3fb-70ca-4072-af3a-b6930490a550" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.4
+output application/json
+---
+{
+	employees: payload map (val, idx) -> 
+					val mapObject ((value, key, index) -> 
+						(lower(key)): value
+					),
+	currentPage: vars.currentPage, 
+	totalPages: vars.totalPages, 
+	links: vars.links
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<logger level="INFO" doc:name="Logger" doc:id="e596507e-fb67-4698-ab04-4e090b43b2b1" message='#["API GET /employees request process finished"]'/>
+    </flow>
+</mule>
